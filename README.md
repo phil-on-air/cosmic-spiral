@@ -1,61 +1,70 @@
 # Cosmic Spiral Visualization
 
-A beautiful 3D cosmic spiral visualization built with React and Three.js. This project features an animated spiral pattern with grid lines, decorative elements, and a starfield background.
+An interactive 3D visualization of a cosmic spiral pyramid with dynamic animations and ambient sound synthesis.
 
 ## Features
 
-- Interactive 3D visualization
-- Animated spiral patterns
-- Grid lines with dynamic opacity
-- Decorative lines with random patterns
-- Starfield background
-- Responsive design
-- Smooth animations
+- **Dynamic 3D Visualization**: A mesmerizing cosmic spiral pyramid created with Three.js
+- **Interactive Elements**: 
+  - Stars that twinkle and rotate independently from the pyramid
+  - Filaments with gradient effects (bright at front, fading to transparent)
+  - Independent movement of different pyramid elements
+- **Ambient Sound Synthesis**:
+  - Deep, atmospheric drones
+  - Occasional lead sounds with echoes
+  - Short, distinct pulses
+  - Big reverb effects
+- **Responsive Design**: Adapts to different screen sizes
+- **Audio Controls**: Toggle button to enable/disable sound
+
+## Live Demo
+
+Visit the live visualization at: [https://phil-on-air.github.io/cosmic-spiral/](https://phil-on-air.github.io/cosmic-spiral/)
 
 ## Technologies Used
 
 - React
 - Three.js
+- Web Audio API
 - Vite
-- JavaScript (ES6+)
+- GitHub Pages for hosting
 
 ## Getting Started
 
 ### Prerequisites
 
 - Node.js (v14 or higher)
-- npm (v6 or higher)
+- npm or yarn
 
 ### Installation
 
 1. Clone the repository:
-```bash
-git clone https://github.com/yourusername/cosmic-spiral.git
-cd cosmic-spiral
-```
+   ```
+   git clone https://github.com/phil-on-air/cosmic-spiral.git
+   cd cosmic-spiral
+   ```
 
 2. Install dependencies:
-```bash
-npm install
-```
+   ```
+   npm install
+   ```
 
 3. Start the development server:
-```bash
-npm run dev
-```
+   ```
+   npm run dev
+   ```
 
-4. Open your browser and navigate to `http://localhost:5173`
+4. Open your browser and navigate to `http://localhost:5173/cosmic-spiral/`
 
-## Building for Production
+## Deployment
 
-To create a production build:
-
-```bash
-npm run build
-```
-
-The built files will be in the `dist` directory.
+The project is automatically deployed to GitHub Pages using GitHub Actions. Any push to the main branch will trigger a new deployment.
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is open source and available under the MIT License.
+
+## Acknowledgements
+
+- Three.js for the 3D rendering capabilities
+- Web Audio API for the sound synthesis
