@@ -1,13 +1,374 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 
 const CosmicSpiral = () => {
   const mountRef = useRef(null);
+  const [isAudioPlaying, setIsAudioPlaying] = useState(false);
+  const audioContextRef = useRef(null);
+  const oscillatorRefs = useRef([]);
+  const gainNodeRef = useRef(null);
   
   // Function to handle refresh
   const handleRefresh = () => {
     window.location.reload();
   };
+  
+  // Function to toggle audio
+  const toggleAudio = () => {
+    if (isAudioPlaying) {
+      stopAudio();
+    } else {
+      startAudio();
+    }
+    setIsAudioPlaying(!isAudioPlaying);
+  };
+  
+  // Function to start audio synthesis
+  const startAudio = () => {
+    try {
+      // Create audio context if it doesn't exist
+      if (!audioContextRef.current) {
+        audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      
+      const audioContext = audioContextRef.current;
+      
+      // Resume audio context if it's suspended (browser policy)
+      if (audioContext.state === 'suspended') {
+        audioContext.resume();
+      }
+      
+      // Create master gain node for volume control
+      gainNodeRef.current = audioContext.createGain();
+      gainNodeRef.current.gain.value = 0.3; // Set initial volume
+      
+      // Create reverb effect
+      const createReverb = () => {
+        const convolver = audioContext.createConvolver();
+        const reverbGain = audioContext.createGain();
+        
+        // Generate impulse response for reverb
+        const length = audioContext.sampleRate * 3; // 3 seconds of reverb
+        const impulse = audioContext.createBuffer(2, length, audioContext.sampleRate);
+        
+        for (let channel = 0; channel < 2; channel++) {
+          const channelData = impulse.getChannelData(channel);
+          
+          for (let i = 0; i < length; i++) {
+            // Create a decaying noise
+            const n = Math.random() * 2 - 1;
+            channelData[i] = n * Math.exp(-i / (length / 3));
+          }
+        }
+        
+        convolver.buffer = impulse;
+        reverbGain.gain.value = 0.5; // Reverb mix
+        
+        return { convolver, reverbGain };
+      };
+      
+      // Create delay effect
+      const createDelay = () => {
+        const delay = audioContext.createDelay();
+        const feedback = audioContext.createGain();
+        
+        delay.delayTime.value = 0.3; // 300ms delay
+        feedback.gain.value = 0.4; // Feedback amount
+        
+        // Connect delay to feedback and back
+        delay.connect(feedback);
+        feedback.connect(delay);
+        
+        return { delay, feedback };
+      };
+      
+      // Create reverb and delay
+      const { convolver, reverbGain } = createReverb();
+      const { delay, feedback } = createDelay();
+      
+      // Connect effects chain
+      gainNodeRef.current.connect(delay);
+      delay.connect(convolver);
+      convolver.connect(reverbGain);
+      reverbGain.connect(audioContext.destination);
+      feedback.connect(audioContext.destination);
+      
+      // Create oscillators for ambient sound
+      oscillatorRefs.current = [];
+      
+      // Create deep drone base
+      const createDrone = (frequency, type, gain) => {
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        
+        oscillator.type = type;
+        oscillator.frequency.value = frequency;
+        oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime);
+        
+        // Add very slow frequency modulation
+        oscillator.frequency.linearRampToValueAtTime(
+          frequency * (1 + Math.random() * 0.02), 
+          audioContext.currentTime + 20
+        );
+        
+        gainNode.gain.value = gain;
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(gainNodeRef.current);
+        
+        oscillator.start();
+        return { oscillator, gainNode };
+      };
+      
+      // Create shimmering high frequencies
+      const createShimmer = (baseFreq, gain) => {
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        
+        oscillator.type = 'sine';
+        oscillator.frequency.value = baseFreq;
+        
+        // Create shimmering effect with LFO
+        const lfo = audioContext.createOscillator();
+        const lfoGain = audioContext.createGain();
+        
+        lfo.frequency.value = 0.05 + Math.random() * 0.1; // Very slow modulation
+        lfoGain.gain.value = baseFreq * 0.3; // Less modulation amount
+        
+        lfo.connect(lfoGain);
+        lfoGain.connect(oscillator.frequency);
+        
+        gainNode.gain.value = gain;
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(gainNodeRef.current);
+        
+        lfo.start();
+        oscillator.start();
+        
+        return { oscillator, gainNode, lfo, lfoGain };
+      };
+      
+      // Create pulsing low frequencies
+      const createPulse = (frequency, gain) => {
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        
+        oscillator.type = 'sine';
+        oscillator.frequency.value = frequency;
+        
+        // Create very slow pulsing effect
+        const pulseLfo = audioContext.createOscillator();
+        const pulseLfoGain = audioContext.createGain();
+        
+        pulseLfo.frequency.value = 0.02 + Math.random() * 0.05; // Extremely slow modulation
+        pulseLfoGain.gain.value = gain * 0.5; // Modulation amount
+        
+        pulseLfo.connect(pulseLfoGain);
+        pulseLfoGain.connect(gainNode.gain);
+        
+        gainNode.gain.value = gain;
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(gainNodeRef.current);
+        
+        pulseLfo.start();
+        oscillator.start();
+        
+        return { oscillator, gainNode, pulseLfo, pulseLfoGain };
+      };
+      
+      // Create cosmic noise
+      const createNoise = (gain) => {
+        const bufferSize = 2 * audioContext.sampleRate;
+        const noiseBuffer = audioContext.createBuffer(1, bufferSize, audioContext.sampleRate);
+        const output = noiseBuffer.getChannelData(0);
+        
+        for (let i = 0; i < bufferSize; i++) {
+          output[i] = Math.random() * 2 - 1;
+        }
+        
+        const noise = audioContext.createBufferSource();
+        noise.buffer = noiseBuffer;
+        noise.loop = true;
+        
+        const noiseGain = audioContext.createGain();
+        noiseGain.gain.value = gain;
+        
+        // Filter the noise to make it more cosmic
+        const filter = audioContext.createBiquadFilter();
+        filter.type = 'bandpass';
+        filter.frequency.value = 400 + Math.random() * 800;
+        filter.Q.value = 0.5;
+        
+        noise.connect(filter);
+        filter.connect(noiseGain);
+        noiseGain.connect(gainNodeRef.current);
+        
+        noise.start();
+        
+        return { noise, noiseGain, filter };
+      };
+      
+      // Create occasional lead sound
+      const createLead = () => {
+        // Create a function to play a lead sound occasionally
+        const playLead = () => {
+          if (!isAudioPlaying) return;
+          
+          const oscillator = audioContext.createOscillator();
+          const gainNode = audioContext.createGain();
+          
+          // Choose a random frequency for the lead
+          const baseFreq = 220 + Math.random() * 440; // A3 to A4 range
+          oscillator.frequency.value = baseFreq;
+          
+          // Choose a random waveform
+          const waveforms = ['sine', 'triangle', 'sawtooth'];
+          oscillator.type = waveforms[Math.floor(Math.random() * waveforms.length)];
+          
+          // Create envelope with more pronounced attack and decay
+          const now = audioContext.currentTime;
+          gainNode.gain.setValueAtTime(0, now);
+          gainNode.gain.linearRampToValueAtTime(0.5, now + 0.05); // Faster attack, higher volume
+          gainNode.gain.linearRampToValueAtTime(0, now + 1.5); // Shorter duration
+          
+          // Add more pronounced pitch bend
+          oscillator.frequency.setValueAtTime(baseFreq, now);
+          oscillator.frequency.linearRampToValueAtTime(baseFreq * 1.2, now + 0.3);
+          
+          oscillator.connect(gainNode);
+          gainNode.connect(gainNodeRef.current);
+          
+          oscillator.start(now);
+          oscillator.stop(now + 1.5);
+          
+          // Schedule next lead sound - more frequently
+          const nextLeadTime = 5000 + Math.random() * 10000; // 5-15 seconds
+          setTimeout(playLead, nextLeadTime);
+        };
+        
+        // Start the first lead sound after a shorter delay
+        const initialDelay = 2000 + Math.random() * 5000; // 2-7 seconds
+        setTimeout(playLead, initialDelay);
+      };
+      
+      // Create short pulse sounds
+      const createPulseSound = () => {
+        // Create a function to play a short pulse sound
+        const playPulse = () => {
+          if (!isAudioPlaying) return;
+          
+          const oscillator = audioContext.createOscillator();
+          const gainNode = audioContext.createGain();
+          
+          // Choose a random frequency for the pulse
+          const baseFreq = 110 + Math.random() * 880; // Wide frequency range
+          oscillator.frequency.value = baseFreq;
+          
+          // Choose a random waveform
+          const waveforms = ['sine', 'square', 'triangle', 'sawtooth'];
+          oscillator.type = waveforms[Math.floor(Math.random() * waveforms.length)];
+          
+          // Create very short envelope for a "ping" sound
+          const now = audioContext.currentTime;
+          gainNode.gain.setValueAtTime(0, now);
+          gainNode.gain.linearRampToValueAtTime(0.7, now + 0.01); // Very fast attack, higher volume
+          gainNode.gain.exponentialRampToValueAtTime(0.001, now + 0.3); // Exponential decay for natural sound
+          
+          // Add slight pitch bend
+          oscillator.frequency.setValueAtTime(baseFreq, now);
+          oscillator.frequency.exponentialRampToValueAtTime(baseFreq * 0.8, now + 0.3);
+          
+          oscillator.connect(gainNode);
+          gainNode.connect(gainNodeRef.current);
+          
+          oscillator.start(now);
+          oscillator.stop(now + 0.3);
+          
+          // Schedule next pulse - more frequently than leads
+          const nextPulseTime = 2000 + Math.random() * 5000; // 2-7 seconds
+          setTimeout(playPulse, nextPulseTime);
+        };
+        
+        // Start the first pulse sound after a short delay
+        const initialDelay = 1000 + Math.random() * 3000; // 1-4 seconds
+        setTimeout(playPulse, initialDelay);
+      };
+      
+      // Add various sound elements
+      oscillatorRefs.current.push(createDrone(27.5, 'sine', 0.15)); // Very low A0
+      oscillatorRefs.current.push(createDrone(55, 'sine', 0.12)); // Low A1
+      oscillatorRefs.current.push(createDrone(110, 'sine', 0.08)); // Mid A2
+      oscillatorRefs.current.push(createShimmer(220, 0.04)); // Shimmer
+      oscillatorRefs.current.push(createPulse(73.4, 0.1)); // Pulsing low
+      oscillatorRefs.current.push(createNoise(0.015)); // Subtle cosmic noise
+      
+      // Start lead sounds and pulse sounds
+      createLead();
+      createPulseSound();
+      
+      // Create a subtle filter sweep
+      const filterSweep = audioContext.createBiquadFilter();
+      filterSweep.type = 'lowpass';
+      filterSweep.frequency.value = 2000;
+      filterSweep.Q.value = 0.5;
+      
+      // Connect filter to master gain
+      gainNodeRef.current.disconnect();
+      gainNodeRef.current.connect(filterSweep);
+      filterSweep.connect(delay);
+      
+      // Animate filter
+      const sweepFilter = () => {
+        if (!isAudioPlaying) return;
+        
+        const now = audioContext.currentTime;
+        filterSweep.frequency.setValueAtTime(2000, now);
+        filterSweep.frequency.linearRampToValueAtTime(800, now + 15);
+        filterSweep.frequency.linearRampToValueAtTime(2000, now + 30);
+        
+        setTimeout(sweepFilter, 30000);
+      };
+      
+      sweepFilter();
+      
+    } catch (error) {
+      console.error('Error starting audio:', error);
+    }
+  };
+  
+  // Function to stop audio synthesis
+  const stopAudio = () => {
+    try {
+      if (oscillatorRefs.current.length > 0) {
+        oscillatorRefs.current.forEach(ref => {
+          if (ref.oscillator) ref.oscillator.stop();
+          if (ref.noise) ref.noise.stop();
+          if (ref.lfo) ref.lfo.stop();
+          if (ref.pulseLfo) ref.pulseLfo.stop();
+        });
+        oscillatorRefs.current = [];
+      }
+      
+      if (gainNodeRef.current) {
+        gainNodeRef.current.gain.setValueAtTime(gainNodeRef.current.gain.value, audioContextRef.current.currentTime);
+        gainNodeRef.current.gain.linearRampToValueAtTime(0, audioContextRef.current.currentTime + 0.5);
+      }
+    } catch (error) {
+      console.error('Error stopping audio:', error);
+    }
+  };
+  
+  // Clean up audio on unmount
+  useEffect(() => {
+    return () => {
+      stopAudio();
+      if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
+        audioContextRef.current.close();
+      }
+    };
+  }, []);
   
   useEffect(() => {
     if (!mountRef.current) return;
@@ -512,6 +873,40 @@ const CosmicSpiral = () => {
         }}
       >
         ↻
+      </button>
+      
+      {/* Audio Toggle Button */}
+      <button 
+        onClick={toggleAudio}
+        style={{
+          position: 'absolute',
+          top: '20px',
+          right: '70px',
+          background: 'rgba(255, 255, 255, 0.2)',
+          color: 'white',
+          border: '1px solid rgba(255, 255, 255, 0.3)',
+          borderRadius: '50%',
+          width: '40px',
+          height: '40px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          cursor: 'pointer',
+          fontSize: '18px',
+          zIndex: 1000,
+          transition: 'all 0.3s ease',
+          boxShadow: '0 0 10px rgba(0, 0, 0, 0.3)'
+        }}
+        onMouseOver={(e) => {
+          e.currentTarget.style.background = 'rgba(255, 255, 255, 0.3)';
+          e.currentTarget.style.transform = 'scale(1.1)';
+        }}
+        onMouseOut={(e) => {
+          e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)';
+          e.currentTarget.style.transform = 'scale(1)';
+        }}
+      >
+        {isAudioPlaying ? '🔊' : '🔈'}
       </button>
     </div>
   );
