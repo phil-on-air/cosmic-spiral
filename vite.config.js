@@ -21,6 +21,12 @@ export default defineConfig({
     }
   },
   server: {
-    base: '/cosmic-spiral/'
+    base: '/cosmic-spiral/',
+    fs: {
+      strict: false
+    }
+  },
+  resolve: {
+    extensions: ['.js', '.jsx', '.json']
   }
 })
