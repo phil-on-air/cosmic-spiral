@@ -11,7 +11,7 @@ export default defineConfig({
     sourcemap: true,
     rollupOptions: {
       input: {
-        main: '/src/main.jsx'
+        main: 'src/main.jsx'
       },
       output: {
         entryFileNames: 'assets/[name].js',
