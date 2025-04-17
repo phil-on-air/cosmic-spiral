@@ -24,8 +24,7 @@ export default defineConfig({
     base: '/cosmic-spiral/',
     fs: {
       strict: false
-    },
-    middlewareMode: true
+    }
   },
   resolve: {
     extensions: ['.js', '.jsx', '.json']
@@ -37,5 +36,7 @@ export default defineConfig({
     loader: 'jsx',
     include: /src\/.*\.jsx?$/,
     exclude: []
-  }
+  },
+  publicDir: 'public',
+  appType: 'spa'
 })
