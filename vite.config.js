@@ -11,7 +11,7 @@ export default defineConfig({
     sourcemap: true,
     rollupOptions: {
       input: {
-        main: '/cosmic-spiral/src/main.jsx'
+        main: 'src/main.jsx'
       },
       output: {
         entryFileNames: 'assets/[name].js',
@@ -25,9 +25,7 @@ export default defineConfig({
     fs: {
       strict: false
     },
-    headers: {
-      'Content-Type': 'application/javascript'
-    }
+    middlewareMode: true
   },
   resolve: {
     extensions: ['.js', '.jsx', '.json']
